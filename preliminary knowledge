@@ -1,0 +1,12 @@
+binascii.unhexlify(hexstr):
+Return the binary data represented by the hexadecimal string hexstr.
+
+关于字符的理解：
+字符涉及两个方面的问题：一个是存储，还有一个是显示。
+显示即通过打印到屏幕我们所看到的，而存储是在计算机中的存放形式。
+所有我们到的字符大致都在ASCII表中，它们有对应的表示形式：二进制，十进制，十六进制。其中二进制就是存储在计算机中的形式。
+虽然这么理解可以有错，但是好记：显示出来的字符就是ASCII中的字符，它们以某种进制存在计算机中，且进制之间可以转换。
+
+但是Return the binary data represented by the hexadecimal string hexstr还是不好理解！！
+总之，传入该方法的参数为普通字符串，会被视为十六进制的表示形式返回。比如：
+binascii.unhexlify(fecdba9876543210) = '\xfe\xcd\xba\x98vT2\x10'
