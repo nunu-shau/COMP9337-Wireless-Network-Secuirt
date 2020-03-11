@@ -1,0 +1,13 @@
+Part1
+在这一部分中，手机是手动连接上evil twin的。在实际情况中并不存在的。
+省略了让手机强制断开原路由器并连上evil twin的过程。
+这一部分的意义是：当用户连接上evil twin之后会发生的一系列问题（主要是密码的窃取）
+
+第一步是将wireless adaptor设置为access point。
+第二步将该access point设置为mitmproxy（为了使用下一步的mitmproxy命令）。当access point成为proxy之后，它具备了转发TCP connection的功能，forward TCP connectiont to original destination.
+第三步是进去mitmproxy的抓取http包的窗口。之后任何连接evil twin的用户发送的http数据都会显示在这里
+
+第四步是用手机打开浏览器，并打开testyou.in网页。当我们输入用户名和密码后，可以在mitmproxy的窗口里找到用户名和密码。Hacker成功窃取信息！
+第五步是浏览Facebook网页。跟上一步不同的是，它使用的是https协议所有的信息会加密，用户与浏览器之间也会authenticate（回忆 TLS protocal：handshake, key derivation, message record, closure）。注意，这里需要将第二步命令中的端口号改为443（因为80是http默认端口号，443是https的默认端口号）。
+第六、七步，不存在显示意义，没有人会去手动信任一个mitm CA。应该会有别的办法让user信任mitmCA，该试验中未提及。但是假设已经做到这一点了，那么mitm(也就是evil twin)会扮演两个角色：一个是CA，generate certificates to whatever hostname(website server) is needed to connect(无论用户想浏览什么网页，mitm CA就发什么网页的certificate给user)；第二个角色是假装website server。certificate里面大致装的是hostname — public key。如果evil twin不把public key换成自己的，永远也无法解开后面user会发送的消息，因为这些消息都会用destination server的public key加密。所以实际上user在把evil twin误认为是website server，做TCP连接，evil twin要做的就是forward TCP connection to original server。 
+第八步我们又可以在mitmproxy窗口中找到用户名和密码。
