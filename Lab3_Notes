@@ -11,3 +11,103 @@ Part1
 第五步是浏览Facebook网页。跟上一步不同的是，它使用的是https协议所有的信息会加密，用户与浏览器之间也会authenticate（回忆 TLS protocal：handshake, key derivation, message record, closure）。注意，这里需要将第二步命令中的端口号改为443（因为80是http默认端口号，443是https的默认端口号）。
 第六、七步，不存在显示意义，没有人会去手动信任一个mitm CA。应该会有别的办法让user信任mitmCA，该试验中未提及。但是假设已经做到这一点了，那么mitm(也就是evil twin)会扮演两个角色：一个是CA，generate certificates to whatever hostname(website server) is needed to connect(无论用户想浏览什么网页，mitm CA就发什么网页的certificate给user)；第二个角色是假装website server。certificate里面大致装的是hostname — public key。如果evil twin不把public key换成自己的，永远也无法解开后面user会发送的消息，因为这些消息都会用destination server的public key加密。所以实际上user在把evil twin误认为是website server，做TCP连接，evil twin要做的就是forward TCP connection to original server。 
 第八步我们又可以在mitmproxy窗口中找到用户名和密码。
+
+
+
+
+
+PS: 
+what is IP forwarding?
+https://openvpn.net/faq/what-is-and-how-do-i-enable-ip-forwarding-on-linux/
+IP forwarding is the ability for an operating system to accept incoming network packets on one interface, recognize that it is not meant for the system itself, but that it should be passed on to another network, and then forwards it accordingly. This is what you need when you have for example a system setup that is sitting between two different networks and needs to pass traffic between them. 
+
+
+
+Lab 3
+Assessment 1
+
+Q1: In your own words, summarise a MITM attack.
+
+A man-in-the-middle attack is essentially an attack that relies on intercepting communication between a client and an access point. This attack may be carried out in the following way:
+1. A malicious user sets up an access point with an SSID identical to the legitimate access point. 
+2. The malicious user then jams the signal for the legitimate access point in order to interrupt the connection between the access point and a legitimate user. Alternatively, the attacker may also send de-authentication frames to disconnect the client from the legitimate access point.
+3. As a result, the client disconnects from the legitimate access point and looks for a new connection. Given that the access point set up by the attacker has the same SSID, the client readily associates with this spoofed access point. 
+4. The spoofed access point then leases the client a new IP address via its DHCP server.
+5. The spoofed access point is associated with the legitimate access point as a client.
+6. The legitimate user sends all its packets to the spoofed access point which the attacker forwards to the legitimate access point, successfully intercepting all communications between the client and the legitimate access point.
+
+
+Q2:
+In few words, explain what does each of the following command do. Please follow the answer template provided and be succinct.
+A) sysctl -w net.ipv4.ip_forward=1
+B) iptables -t nat -A PREROUTING -i wlan0 -p tcp --dport 80 -j REDIRECT -- to- port 8080
+C) iptables -t nat -A PREROUTING -i wlan0 -p tcp --dport 443 -j REDIRECT - -to- port 8080
+
+A: this command enables IP forwarding. This is done when the system is required to function as a router.
+B: this is to redirect all the HTTP packets destined for port 80 to port 8080.
+C: this is to redirect all the HTTPS packets destined for port 443 to port 8080.
+
+Since the Evil AP acts like a server to the client, all HTTP requests sent to Evil AP are destined for port 80 and all HTTPS requests are destined for port 443. These requests are then forwarded to port 8080 which is where mitmproxy is listening for packets from the client.
+
+
+Q3: For the “man in the middle” attack, what tools and method did you use to obtain the credential to “testyou”?
+
+For the man-in-the-middle attack, mitmproxy is the tool that's used on the Kali OS. Once mitmproxy is run, it starts listening for packets on port 8080. After this, the packet destined for testyou's server is captured by mitmproxy. Then the interception pattern is set to "testyou" by pressing "i" in the terminal, followed by "testyou" followed by the Enter key. After this, inspecting the requests for the testyou domain reveals the username and password in plaintext.
+
+
+Q4: Why at Step 6 when you try to access "https://www.google.com" you see the page "Your connection is not private" or "Cannot provide a secure connection"?
+
+On step 6, user doesn’t trust CA of evil twin access point yet. When facebook.com received the TCP connection request from user, it detected this request is forwarded from an untrusted proxy, os it will deny the TCP connection with user. However, after user trusted CA of evil twin, the user mistook evil twin as facebook server, and made a TCP connection with it. Then the evil twin made a connection with facebook server and forward everything from user to facebook server. 
+
+
+Q5. By default, mitmproxy listens on port number: 8080
+
+Q6: Explain 'GET' and 'POST' methods you see in the logged data in mitmproxy console.
+
+Mitmproxy console allows interactive examination and modification of HTTP traffic. The GET methods in the console are the GET requests used to request data from a specified resource in the example of the Lab this would be the client.
+The post methods are the POST requests that are used to send data to a server to create or update a resource in the example of the Lab this would be the Facebook servers. The username and the password of the login would be contained within the POST request that the client servers to the Facebook servers. 
+Mitmproxy allows you to view the header and the body of both GET and POST methods
+
+Q7: What is the difference between a replaying a packet and intercepting a packet?
+Replaying a packet is the act of delaying or repeating of data transmission carried out by the sender or by a malicious entity who intercepts the data and retransmits it. Attackers uses replaying packets as a way to replay the data transmission from a different sender into the intended receiver, thereby fooling the participants into believing they have successfully completed the transmission. Replaying packets allow attackers to gain access to a network or gain information which would not have been easily accessible or complete a duplicate transaction. A replay of a packet can also be performed by the sender if a packet is lost over transmission, then the sender will replay the packet after a timeout period. T t 
+Intercepting a packet is the process of capturing each packet in the data stream and if needed decodes the packet’s raw data and analyzes its contents. This is action is usually performed by system administrators and hackers. Administrators intercept packets to analyze network problems, minor data in transit or detect network misuse by internal and external users. Hackers can also intercept packets to collect sensitive information such as login details. Hackers can also use reuse these packets for replay attacks. 
+
+
+Assessment 2:
+
+Q1: List all commands used to setup a working Evil Twin AP (as specified in the instruction sheet document). Briefly, describe each command's function as well
+>sysctl -w net.ipv4.ip_forward=1
+This command enables IP forwarding. This is done when the system is required to function as a router.
+
+>iptables -t nat -A PREROUTING -i wlan0 -p tcp --dport 80 -j REDIRECT -- to- port 8080
+This is to redirect all the HTTP packets destined for port 80 to port 8080.
+
+>iptables -t nat -A PREROUTING -i wlan0 -p tcp --dport 443 -j REDIRECT - -to- port 8080
+This is to redirect all the HTTPS packets destined for port 443 to port 8080.
+
+>mitmproxy -T --host
+This command is to start mitmproxy, a tool used to carry out man-in-the-middle attacks. 
+
+Now the Evil Twin AP is set up listening for packets from the client on port 8080.
+
+
+Q2: How would you detect an Evil Twin attack, in an environment similar to the one shown in Figure 1 of Lab 3 instruction sheet? In other words, how would you know "Starbucks WiFi" is not an Evil Twin and is trustworthy.
+
+Every time I try to connect to the Starbucks wifi, disable the auto connection function. Before I enter a correct password, I will enter a wrong password on purpose. If I am accepted without any error message, it means this is an evil twin. This method however is only plausible if the evil twin does not route packets to the legitimate wireless network.  
+You can also use tools that would detect evil access points. One of these tools is EvilAP_Defender which is a tool that is designed to alert if a suspected evil twin is discovered. The tools detects evil APs using one of the following characteristics:
+Evil AP with different BSSID address
+Evil AP with the same BSSID as the legitimate AP but with different attributes ( including :channel, cipher, privacy protocol and authentication
+Evil AP with the same BSSID and attributes as the legitimate AP with different tagged parameters.
+For solutions specific to the scenario displayed in the Figure 1, the first red flag that would be raised by the user would be that there was no encryption placed on the evil twin. This makes the network highly suspect. A wireless network that does not have any encryption is highly uncommon in reality so a network that has no encryption is likely a evil twin. Another way to detect a evil twin would be to ask any of the Starbucks workers for the correct wireless network name which in this case is “Starbucks WiFi”.  By asking the workers for the correct wireless network the user understands now that “Starbucks” is a evil twin access point. 
+
+
+Q3: What is Fluxion Attack? When was it released? (i.e. how old is this attack?) if you were to target a network, when would you consider this attack?
+Fluxion is a tool that uses a WPA handshake to affect the functionality of a login page as it attempts to gain receipt of user information. It jams the original network and creates a clone with the same name, enticing the disconnected user to join. It presents a fake login page indicating the router needs to restart or load firmware and requests the network password to proceed. The tool uses a captured handshake to check the password entered and continues to jam the target access point until the correct password is entered.
+Fluxion is  a remake of linset another evil twin attack hacking tool that was released in 2016. This means the tool was developed 3 years ago. 
+An Fluxion attack would be used if you have limited time to crack a WPA password or it is unusually strong. Fluxion attacks targets the common vulnerability that all systems have which are users. These attacks are usually preferred because they are cheap and effective.  These attacks are particularly effective against users that are sufficiently inexperienced with technology who fall for a social engineering attack. Other targets that are vulnerable to these attacks are small to medium sized businesses. These businesses usually have many vulnerable or unpatched systems with default credentials that are easy to exploit over their wireless network and are not likely to know what an attack looks like.
+
+Q4: What is DNS Spoofing attack? Can Evil Twin attack be used as part of a DNS Spoofing attack? If so, please provide a succinct summary.
+DNS Spoofing is an attack in which altered DNS records are used to redirect online traffic to fraudulent websites that resembles its intended destination. Once there, users are prompted to login into their account, giving the perpetrator the opportunity to steal their access credentials and other types of sensitive information. Furthermore the malicious website is often used to install worms or viruses on the user’s computer giving the perpetrator long term access to it and the data it stores it. This technique can also be used for phishing attacks where a fake version of a genuine website is created to gather personal details such as bank and credit/debit card details. 
+When combined with Evil Twin attacks, once victims are connected to the attacker’s access point,  attackers will often use DNS spoofing to redirect the victims to a cloned landing page or website. This leads to setting up the victim for a Man In The Middle attack. From here attackers can collect sensitive and personal information from the victims. 
+
+
